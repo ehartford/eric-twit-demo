@@ -10,10 +10,11 @@ var http = require('http');
 var path = require('path');
 var auth = require('./authentication.js');
 var passport = require('passport');
-var User = require('./user.js')
-var fs = require('fs')
-var Twit = require('twit')
-var config = require('./oauth.js')
+var User = require('./user.js');
+var fs = require('fs');
+var Twit = require('twit');
+var config = require('./oauth.js');
+var analyze = require('Sentimental').analyze;
 
 var app = express();
 
@@ -84,7 +85,18 @@ var io = require('socket.io').listen(server);
 var stream = T.stream('statuses/sample')
 
 io.sockets.on('connection', function (socket) {
-  // stream.on('tweet', function(tweet) {
-  //   socket.emit('info', { tweet: tweet});
-  // });
+   stream.on('tweet', function(tweet) {     
+     if(!tweet.place) {
+       return;
+     }
+     if(tweet.place.country_code != 'US') {
+        return;
+     }
+     tweet.sentiment = analyze(tweet.text);
+     if(!tweet.sentiment.score) {
+        return;
+     }
+     console.log({text: tweet.text, place: tweet.place, geo: tweet.geo, coordinates: tweet.coordinates, sentiment: tweet.sentiment});
+     socket.emit('info', { tweet: tweet });
+   });
 });

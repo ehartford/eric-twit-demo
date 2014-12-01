@@ -5,3 +5,14 @@ body {
 a {
   color: #00b7ff;
 }
+path {
+  fill: none;
+  stroke-linejoin: round;
+}
+.land {
+  fill: #ddd;
+}
+.states,
+.hexagons path {
+  stroke: #fff;
+}
