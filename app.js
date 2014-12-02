@@ -81,22 +81,34 @@ var T = new Twit({
 })
 
 //Socket.io
-var io = require('socket.io').listen(server);
-var stream = T.stream('statuses/sample')
+var io = require('socket.io').listen(server, {log: false});
+var USA = [-124.848974, 24.396308, -66.885444, 49.384358];
+var stream = T.stream('statuses/filter', {'locations': USA});
 
 io.sockets.on('connection', function (socket) {
-   stream.on('tweet', function(tweet) {     
-     if(!tweet.place) {
-       return;
-     }
-     if(tweet.place.country_code != 'US') {
+   stream.on('tweet', function(tweet) {
+     if(!tweet.place || tweet.place.country_code != 'US') {
         return;
+     }
+     if(!tweet.coordinates) {
+        tweet.coordinates = {};
+        tweet.coordinates.coordinates = [0,0];
+        try {
+            var bb = tweet.place.bounding_box.coordinates[0];
+            bb.forEach(function(n) {
+                tweet.coordinates.coordinates[0] += n[0];
+                tweet.coordinates.coordinates[1] += n[1];
+            });
+            tweet.coordinates.coordinates[0] /= bb.length;
+            tweet.coordinates.coordinates[1] /= bb.length;
+        } catch (error) {
+            return;
+        }
      }
      tweet.sentiment = analyze(tweet.text);
-     if(!tweet.sentiment.score) {
+     if(tweet.sentiment.score == 0) {
         return;
      }
-     console.log({text: tweet.text, place: tweet.place, geo: tweet.geo, coordinates: tweet.coordinates, sentiment: tweet.sentiment});
      socket.emit('info', { tweet: tweet });
    });
 });

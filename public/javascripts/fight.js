@@ -23,6 +23,9 @@ var TweetList = React.createClass({
     }
 });
 
+var sentiments = [];
+var ww = {};
+
 var TweetBox = React.createClass({
     addTweet: function(tweet) {
         var tweets = this.state.data;
@@ -33,6 +36,18 @@ var TweetBox = React.createClass({
         }
 
         this.setState({data: newTweets});
+        var d = {
+            '0': tweet.coordinates.coordinates[0],
+            '1': tweet.coordinates.coordinates[1],
+            's': tweet.sentiment.score};
+        var p = projection(d);
+        d[0] = p[0];
+        d[1] = p[1];
+        sentiments[sentiments.length] = d;
+        if(sentiments.length > 100000) {
+            sentiments.shift();
+        }
+        update();
     },
     getInitialState: function() {
         return {data: []};
@@ -63,9 +78,9 @@ var width = 960,
     height = 500,
     parseDate = d3.time.format("%x").parse;
 
-var color = d3.time.scale()
-    .domain([new Date(1962, 0, 1), new Date()])
-    .range(["black", "steelblue"])
+var color = d3.scale.linear()
+    .domain([-10,10])
+    .range(["#B26D00", "steelblue"])
     .interpolate(d3.interpolateLab);
 
 var hexbin = d3.hexbin()
@@ -90,15 +105,16 @@ var svg = d3.select("#chart").append("svg")
 
 queue()
     .defer(d3.json, "vendor/d3/us.json")
-    .defer(d3.tsv, "vendor/d3/readme-walmart.tsv")
+    //.defer(d3.tsv, "vendor/d3/readme-walmart.tsv")
     .await(ready);
 
-function ready(error, us, walmarts) {
-  walmarts.forEach(function(d) {
-    var p = projection(d);
-    d[0] = p[0], d[1] = p[1];
-    d.date = parseDate(d.date);
-  });
+function ready(error, us) {//, walmarts) {
+  //ww = walmarts;
+  //walmarts.forEach(function(d) {
+  //  var p = projection(d);
+  //  d[0] = p[0], d[1] = p[1];
+  //  d.date = parseDate(d.date);
+  //});
 
   svg.append("path")
       .datum(topojson.feature(us, us.objects.land))
@@ -110,12 +126,19 @@ function ready(error, us, walmarts) {
       .attr("class", "states")
       .attr("d", path);
 
+  update();
+}
+
+function update() {
+  svg.selectAll("g").remove();
   svg.append("g")
       .attr("class", "hexagons")
     .selectAll("path")
-      .data(hexbin(walmarts).sort(function(a, b) { return b.length - a.length; }))
+      .data(hexbin(sentiments).sort(function(a, b) { return b.length - a.length; }))
     .enter().append("path")
-      .attr("d", function(d) { return hexbin.hexagon(radius(d.length)); })
+      .attr("d", function(d) {
+        return hexbin.hexagon(radius(d.length));
+      })
       .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
-      .style("fill", function(d) { return color(d3.median(d, function(d) { return +d.date; })); });
+      .style("fill", function(d) { return color(d3.sum(d, function(d) { return +d.s; })); });
 }
