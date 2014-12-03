@@ -3,7 +3,7 @@
 var Tweet = React.createClass({
     render: function() {
         return (
-            <li><span style={{'float': 'left', 'width': '50px'}}>{this.props.sentiment.score}</span>{this.props.text}</li>
+            <li><span style={{'float': 'left', 'width': '50px', 'text-align': 'center'}}>{this.props.sentiment.score}</span>{this.props.text}</li>
         )
     }
 });
@@ -24,7 +24,6 @@ var TweetList = React.createClass({
 });
 
 var sentiments = [];
-var ww = {};
 
 var TweetBox = React.createClass({
     addTweet: function(tweet) {
@@ -44,7 +43,7 @@ var TweetBox = React.createClass({
         d[0] = p[0];
         d[1] = p[1];
         sentiments[sentiments.length] = d;
-        if(sentiments.length > 100000) {
+        if(sentiments.length > 20000) {
             sentiments.shift();
         }
         update();
@@ -78,18 +77,21 @@ var width = 960,
     height = 500,
     parseDate = d3.time.format("%x").parse;
 
-var color = d3.scale.linear()
+var color = d3.scale.sqrt()
     .domain([-10,10])
-    .range(["#B26D00", "steelblue"])
-    .interpolate(d3.interpolateLab);
+    //.range(["#4A2EB4", "#FFE400"])
+    .range(["#5600B2", "#FFFF72"])
+    .interpolate(d3.interpolateLab)
+    .clamp(true);
 
 var hexbin = d3.hexbin()
     .size([width, height])
     .radius(8);
 
 var radius = d3.scale.sqrt()
-    .domain([0, 12])
-    .range([0, 8]);
+    .domain([0, 50])
+    .range([0, 10])
+    .clamp(true);
 
 var projection = d3.geo.albers()
     .scale(1000)
@@ -105,16 +107,9 @@ var svg = d3.select("#chart").append("svg")
 
 queue()
     .defer(d3.json, "vendor/d3/us.json")
-    //.defer(d3.tsv, "vendor/d3/readme-walmart.tsv")
     .await(ready);
 
-function ready(error, us) {//, walmarts) {
-  //ww = walmarts;
-  //walmarts.forEach(function(d) {
-  //  var p = projection(d);
-  //  d[0] = p[0], d[1] = p[1];
-  //  d.date = parseDate(d.date);
-  //});
+function ready(error, us) {
 
   svg.append("path")
       .datum(topojson.feature(us, us.objects.land))
@@ -140,5 +135,5 @@ function update() {
         return hexbin.hexagon(radius(d.length));
       })
       .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
-      .style("fill", function(d) { return color(d3.sum(d, function(d) { return +d.s; })); });
+      .style("fill", function(d) { return color(d3.mean(d, function(d) { return +d.s; })); });
 }
